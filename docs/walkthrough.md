@@ -43,27 +43,27 @@ Create `my-tasks/gpqa/reference/SAMPLE_TASK_DESCRIPTIONS.md` with examples of si
 External custom task:
 
 ```bash
-sia --task_dir ./my-tasks/gpqa --max_gen 5 --run_id 1
+sia run --task_dir ./my-tasks/gpqa --max_gen 5 --run_id 1
 ```
 
 Bundled task (for comparison):
 
 ```bash
-sia --task gpqa --max_gen 5 --run_id 1
+sia run --task gpqa --max_gen 5 --run_id 1
 ```
 
-With OpenHands + Gemini:
+With a meta agent on OpenHands + Gemini (author `./profiles/gemini-meta.json` with
+`"agent_impl": "openhands"`, `"model": "gemini/gemini-3.1-pro-preview"`, `"provider_id": "gemini"`):
 
 ```bash
-sia \
+sia run \
   --task_dir ./my-tasks/gpqa \
   --max_gen 5 \
   --run_id 1 \
-  --backend openhands \
-  --meta_model "gemini/gemini-3.1-pro-preview"
+  --meta-agent-profile gemini-meta
 ```
 
-See [configuration.md](configuration.md) for the full list of backends and models.
+See [configuration.md](configuration.md) for the full profile/provider schema and more examples.
 
 ## Step 3: Analyze results
 
@@ -77,6 +77,15 @@ cat runs/run_1/gen_2/improvement.md
 # Diff successive agent versions
 diff runs/run_1/gen_1/target_agent.py runs/run_1/gen_2/target_agent.py
 ```
+
+Or browse it all in the web dashboard:
+
+```bash
+sia web                  # → http://127.0.0.1:8000
+```
+
+The dashboard also auto-starts during `sia run`, so you can watch generations
+land live (disable with `--no-web`).
 
 ## Task directory requirements
 
