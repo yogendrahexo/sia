@@ -429,16 +429,7 @@ If your agent executes code via a sandbox:
       ```
     - Ensure MODAL_TOKEN_ID and MODAL_TOKEN_SECRET are set in the environment (automatically available)"""
 
-    return """.format(
-        RL_GUIDE=RL_GUIDE,
-        task_md=task_files.task_md,
-        sample_task_descriptions=task_files.sample_task_descriptions,
-        reference_target_agent_py=task_files.reference_target_agent_py,
-        sample_agent_execution=json.dumps(task_files.sample_agent_execution, indent=2),
-        working_dir=working_dir,
-        task_model=task_model,
-        sandbox_instruction=sandbox_instruction
-    )""You are a meta-agent. Your task is to create a training script which can execute a task.
+    return """You are a meta-agent. Your task is to create a training script which can execute a task.
 In this 'weights' mode, your primary goal is to implement a Reinforcement Learning (RL) pipeline to tune the model's performance for the specific task using the `tinker-cookbook` library.
 
 ---
@@ -529,7 +520,7 @@ CRITICAL RULES - FOLLOW EXACTLY:
            for traj in trajectories:
                # Extract final output, grade it, compute reward
                reward = 1.0 if correct else 0.0
-               rewards_and_metrics.append((reward, {"is_correct": float(correct)}))
+               rewards_and_metrics.append((reward, {{"is_correct": float(correct)}}))
            return rewards_and_metrics
 
    # 3. Implement RLDataset class (batches EnvGroupBuilders)
@@ -588,7 +579,7 @@ CRITICAL RULES - FOLLOW EXACTLY:
        args = parser.parse_args()
 
        results = asyncio.run(main(args.dataset_dir, args.working_dir))
-       print(f"Training complete. Results: {results}")
+       print(f"Training complete. Results: {{results}}")
    ```
 
    **DO NOT deviate from this structure. DO NOT implement train_epoch(), evaluate(), or custom training loops.**
@@ -615,7 +606,16 @@ CRITICAL RULES - FOLLOW EXACTLY:
 
 Example invocation (paths will vary at runtime):
     python train.py --dataset_dir /path/to/dataset --working_dir /path/to/working
-"""
+""".format(
+        RL_GUIDE=RL_GUIDE,
+        task_md=task_files.task_md,
+        sample_task_descriptions=task_files.sample_task_descriptions,
+        reference_target_agent_py=task_files.reference_target_agent_py,
+        sample_agent_execution=json.dumps(task_files.sample_agent_execution, indent=2),
+        working_dir=working_dir,
+        task_model=task_model,
+        sandbox_instruction=sandbox_instruction
+    )
 
 
 def build_meta_prompt(
