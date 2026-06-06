@@ -47,7 +47,7 @@ def _build_weights_meta_prompt(
     Args:
         training_sandbox: "modal" (default) or "sandboxfusion" for code execution
     """
-    # RL Integration Guide - embedded directly (sections 1-3, 5-9; section 4 sandbox config is below)
+    # RL Integration Guide (sections 1-9)
     RL_GUIDE = """# RL Integration Guide: Custom Task Tuning with Tinker-Cookbook
 
 This guide provides the necessary architectural context and implementation patterns to integrate a custom Agent/Task into the `tinker-cookbook` RL pipeline. Use this to build a task-specific `Env`, `EnvGroupBuilder`, and `RLDataset`.
@@ -445,7 +445,7 @@ Here is the FULL TASK SPECIFICATION that your train.py will need to solve:
 Here are a couple of sample task descriptions which the reference agent has to solve:
 {sample_task_descriptions}
 
-Here is a sample reference target_agent.py showing the complete implementation pattern (READ THE ENTIRE FILE):
+Here is a sample reference train.py implementation showing the training component patterns (READ THE ENTIRE FILE):
 {reference_target_agent_py}
 
 Here is a sample agent execution trajectory:
@@ -477,7 +477,7 @@ CRITICAL RULES - FOLLOW EXACTLY:
 
 9. CRITICAL RULES FOR WEIGHTS MODE - FOLLOW EXACTLY:
 
-   **MANDATORY:** Your train.py MUST ONLY use tinker_cookbook.rl.train.main() - do NOT write custom training loops.
+   **MANDATORY:** Your train.py must implement only tinker-cookbook components (Env, EnvGroupBuilder, RLDataset, RLDatasetBuilder). Do NOT write local training code or custom training loops. The tinker-cookbook library will execute your components directly via tinker_cookbook.rl.train.main().
 
    Your train.py must have this exact structure (copy-paste the template below):
 
