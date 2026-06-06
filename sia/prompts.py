@@ -651,7 +651,7 @@ Here are a couple of sample task descriptions which the target agent has to solv
 {reference_section}
 
 Here is a sample agent execution trajectory:
-{task_files.sample_agent_execution}
+{json.dumps(task_files.sample_agent_execution, indent=2)}
 
 CRITICAL RULES - FOLLOW EXACTLY:
 
