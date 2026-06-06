@@ -62,6 +62,10 @@ class Config:
         "scikit-learn",
         "pandas",
         "numpy",
+        # RL training packages for weights mode
+        "vllm",
+        "tinker",
+        "tinker-cookbook[modal] @ git+https://github.com/thinking-machines-lab/tinker-cookbook.git@nightly",
     ]
 
     @classmethod
