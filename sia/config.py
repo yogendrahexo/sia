@@ -57,12 +57,16 @@ class Config:
         "openai",
         "python-dotenv",
         "google-genai",
+        "claude-agent-sdk",
         "tqdm",
         "pydantic",
         "scikit-learn",
         "pandas",
         "numpy",
-        # RL training packages for weights mode
+    ]
+
+    # Additional packages only for weights mode (RL training)
+    WEIGHTS_VENV_PACKAGES: ClassVar[list[str]] = [
         "vllm",
         "tinker",
         "tinker-cookbook[modal] @ git+https://github.com/thinking-machines-lab/tinker-cookbook.git@nightly",

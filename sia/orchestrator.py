@@ -855,6 +855,7 @@ def main():
         task_model,
         agent_impl,
         max_gen,
+        focus=args.focus,
         config=env_config,
         meta_profile=meta_profile,
         target_profile=target_profile,
