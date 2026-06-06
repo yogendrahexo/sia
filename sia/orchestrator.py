@@ -325,12 +325,20 @@ def main():
         choices=["claude", "openhands"],
         help="Agent backend to use: claude (Claude Code SDK) or openhands (OpenHands SDK) (default: claude)",
     )
+    parser.add_argument(
+        "--focus",
+        type=str,
+        default="harness",
+        choices=["harness", "weights"],
+        help="Focus of improvement: 'harness' (default) or 'weights' (weight updates)",
+    )
     args = parser.parse_args()
 
     max_gen = args.max_gen
     task_dir, shared_dir = resolve_task_dir(args.task, args.task_dir)
     run_id = args.run_id
     backend = args.backend
+    focus = args.focus
 
     # Set default meta_model based on backend if not explicitly provided
     if args.meta_model is None:
@@ -350,6 +358,7 @@ def main():
     logger.info(f"  - Task directory: {task_dir}")
     logger.info(f"  - Run ID: {run_id}")
     logger.info(f"  - Agent backend: {backend}")
+    logger.info(f"  - Focus: {focus}")
     logger.info(f"  - Meta-agent model: {meta_model}")
     logger.info(f"  - Task-agent model: {task_model}")
 
@@ -405,6 +414,9 @@ def main():
         "scikit-learn",
         "pandas",
         "numpy",
+        "vllm",
+        "tinker-cookbook",
+        "tinker-cookbook[modal] @ git+https://github.com/thinking-machines-lab/tinker-cookbook.git@nightly"
     ]
 
     if shutil.which("uv"):
@@ -435,7 +447,170 @@ def main():
     # SECTION 3: Define Prompts
     # ========================
 
-    META_AGENT_PROMPT = f"""You are a meta-agent. Your task is to create a target agent which can execute a task. Go ahead and create a target_agent.py for the target agent, which in turn can solve the given task.
+    if focus == "weights":
+        rl_guide_path = resource_files("sia").joinpath("RL_INTEGRATION_GUIDE.md")
+        RL_GUIDE = Path(str(rl_guide_path)).read_text()
+        META_AGENT_PROMPT = f"""You are a meta-agent. Your task is to create a training script which can execute a task.
+In this 'weights' mode, your primary goal is to implement a Reinforcement Learning (RL) pipeline to tune the model's performance for the specific task using the `tinker-cookbook` library.
+
+---
+RL INTEGRATION GUIDE:
+{RL_GUIDE}
+---
+
+Go ahead and create a train.py which will train and return back the training model checkpoint url. You should take the reference agent and tune the model using this agent and whatever data or problem statement we have.
+
+Here is the FULL TASK SPECIFICATION that your train.py will need to solve:
+{TASK_MD}
+
+Here are a couple of sample task descriptions which the reference agent has to solve:
+{SAMPLE_TASK_DESCRIPTIONS}
+
+Here is a sample reference target_agent.py showing the complete implementation pattern (READ THE ENTIRE FILE):
+{REFERENCE_TARGET_AGENT_PY}
+
+Here is a sample agent execution trajectory:
+{json.dumps(SAMPLE_AGENT_EXECUTION, indent=2)}
+
+CRITICAL RULES - FOLLOW EXACTLY:
+
+1. The current working directory is {META_AGENT_WORKING_DIRECTORY}. Create the train.py in the current working directory itself.
+
+2. The train.py MUST accept two command-line arguments:
+   - --dataset_dir: Absolute path to the dataset directory (READ-ONLY, provided at runtime)
+   - --working_dir: Absolute path to the working directory (READ-WRITE, provided at runtime)
+
+3. CRITICAL: The train.py must INCLUDE these paths in the prompt it sends to {task_model}. {task_model} MUST be explicitly told:
+   - Where the dataset directory is located (the exact path from --dataset_dir)
+   - Where the working directory is located (the exact path from --working_dir)
+   - That it can ONLY READ from the dataset directory
+   - That it can READ from and WRITE to the working directory
+
+   DO NOT let {task_model} search for data in random locations. The prompt must say: "The dataset is at: <actual_dataset_dir_path>"
+
+4. The train.py can ONLY read from the dataset directory provided via --dataset_dir, and can ONLY write to the working directory specified by --working_dir. It must NOT access any other directories on the filesystem.
+
+5. EXECUTION LOGGING - CRITICAL:
+
+   The train.py must log its execution trajectory properly. The format depends on the task type:
+
+   **FOR TASKS WITH MULTIPLE INDEPENDENT SAMPLES** (e.g., GPQA with 198 questions, multiple test cases):
+   - Create a folder: agent_execution/ in the working directory
+   - Save each sample separately: execution_q0.json, execution_q1.json, execution_q2.json, etc.
+   - Each file contains the complete trajectory for that ONE sample only
+   - Files must be named sequentially: execution_q0.json, execution_q1.json, ...
+
+   **FOR TASKS WITH SINGLE EXECUTION** (e.g., building one ML model, analyzing one dataset):
+   - Save to a single file: agent_execution.json in the working directory
+   - File contains the complete execution trajectory
+
+   **HOW TO DETERMINE WHICH FORMAT**:
+   - Read the task description carefully
+   - If it mentions "independent items", "dataset with multiple records to process separately"
+     → Use multi-trajectory (folder with multiple files)
+   - If it's about "build a model", "analyze the dataset", "create one solution", "optimize one system"
+     → Use single-trajectory (one JSON file)
+
+   **FORMAT REQUIREMENTS** (both formats):
+   - Use the same format as the sample agent execution trajectory provided above
+   - Include all messages, tool calls, and their results
+   - Ensure valid JSON (properly close all arrays/objects)
+   - Make sure to properly close the JSON file(s) to avoid corruption
+
+6. Do NOT attempt to write to or modify files inside the dataset directory. It is READ-ONLY.
+7. The train.py should use only the "{task_model}" model when invoking the language model (do not use any other model).
+8. DO NOT hardcode any specific dataset paths in the train.py code. The paths will be provided at runtime via command-line arguments and MUST be passed to {task_model} in the prompt.
+
+9. SPECIAL RULES FOR WEIGHTS:
+   - If a train/test split is not already provided in the dataset, your train.py MUST dynamically split the data into training and evaluation sets internally to avoid overfitting. Shuffle the dataset if required.
+   - Look for an `evaluate.py` script in the dataset directory. You should use it or replicate its logic within your training pipeline to properly calculate rewards and track evaluation metrics.
+   - The train.py MUST implement the RL pipeline as described in the RL Integration Guide.
+   - The final submission or task output MUST be generated using the last step or final trained model outputs after the RL training is complete.
+   - You MUST add the log path of {META_AGENT_WORKING_DIRECTORY}/training_logs (the training_logs folder inside the current generation directory) to your training log_path configuration.
+   - Ensure all necessary components (Env, EnvGroupBuilder, RLDataset, Training Pipeline) are correctly implemented in train.py.
+
+Example invocation (paths will vary at runtime):
+    python train.py --dataset_dir /path/to/dataset --working_dir /path/to/working
+"""
+
+        FEEDBACK_AGENT_PROMPT = """You are an expert AI Engineer analyzing an RL-based agent scaffold.
+
+**GENERATION CONTEXT**:
+- Current generation: {CURRENT_GEN}
+- Previous generations: {PREVIOUS_GENS}
+- Evolution history: {CONTEXT_MD_PATH}
+
+**BEFORE ANALYZING - READ THE FULL HISTORY**:
+1. Read {CONTEXT_MD_PATH} to understand the evolution.
+2. Review previous improvement.md files from earlier generations if helpful.
+
+---
+
+**SAMPLE TASK DESCRIPTIONS**:
+```
+{SAMPLE_TASK_DESCRIPTIONS}
+```
+
+**CURRENT TARGET AGENT** (Generation {CURRENT_GEN}):
+```python
+{AGENT_PY}
+```
+
+**TASK WORKED ON**:
+```
+{TASK}
+```
+
+**EXECUTION STATUS**:
+```
+{EXECUTION_STATUS}
+```
+
+**EXECUTION LOGS**:
+{EXECUTION_SECTION}
+
+---
+
+**YOUR TASK**:
+In this 'weights' mode, your ONLY goal is to make sure the train.py works. 
+Do NOT suggest or implement any further architectural improvements or task optimizations.
+Simply ensure that the RL pipeline runs correctly, training completes, and the final output is generated using the trained model.
+
+You must create exactly TWO files in {IMPROVEMENT_DIR}/:
+1. improvement.md - Analysis of why it might have failed (if it did) or a statement that it works.
+2. train.py - The agent implementation (fix bugs only if necessary to ensure it works).
+
+Follow these steps:
+
+**STEP 1: Analyze the execution**:
+   - Read the first 50 lines of the train_stdout.log carefully. There are often module import errors or missing dependencies logged early.
+   - Identify if the RL pipeline ran successfully.
+   - Check if training completed and final output was produced.
+   - If it failed, identify the root cause.
+   - After verifying that the complete pipeline works, modify the train.py to run for an appropriate number of steps (but not more than 100). Ensure evaluation runs every 10 or 20 steps to track score improvement.
+
+**STEP 2: Write improvement.md**:
+   - MUST save to: {IMPROVEMENT_DIR}/improvement.md
+   - Focus ONLY on making the agent work. 
+   - If it works, just state that it works.
+
+**STEP 3: Create train.py**:
+   - MUST save to: {IMPROVEMENT_DIR}/train.py
+   - If it works, just copy the code from the previous generation.
+   - If it failed, fix the bugs required to make it work.
+
+**STEP 4: Early Stopping (Weights Update ONLY)**:
+   - If the previous generation's train.py executed successfully AND it already ran for the full, appropriate number of steps (i.e., the training is completely finished), you MUST create an empty file named `COMPLETED` at `{IMPROVEMENT_DIR}/COMPLETED`. This will signal the orchestrator to stop the evolutionary loop early.
+   - HOWEVER, if the training logs (metrics) show that the model failed to learn (e.g. 0% accuracy, or `frac_mixed` is 0.0 indicating no variance in GRPO rollouts), DO NOT output the `COMPLETED` file. Instead, you must keep the loop going by iterating on `train.py` (for example, by enforcing a <think> Chain-of-Thought step, increasing temperature, or adjusting group sizes to introduce variance).
+
+**RULES**:
+- Focus ONLY on ensuring the agent runs and completes the task using RL.
+- Do NOT perform any structural improvements or optimizations beyond making it functional.
+- Ensure the final output is generated using the trained model.
+"""
+
+    else:
+        META_AGENT_PROMPT = f"""You are a meta-agent. Your task is to create a target agent which can execute a task. Go ahead and create a target_agent.py for the target agent, which in turn can solve the given task.
 
 Here is the FULL TASK SPECIFICATION that your target_agent.py will need to solve:
 {TASK_MD}
@@ -502,7 +677,7 @@ Example invocation (paths will vary at runtime):
     python target_agent.py --dataset_dir /path/to/dataset --working_dir /path/to/working
 """
 
-    FEEDBACK_AGENT_PROMPT = """You are an expert AI Engineer analyzing agent scaffolds for iterative improvement.
+        FEEDBACK_AGENT_PROMPT = """You are an expert AI Engineer analyzing agent scaffolds for iterative improvement.
 
 **GENERATION CONTEXT**:
 - Current generation: {CURRENT_GEN}
@@ -632,7 +807,10 @@ NOTE: The agent execution log may be incomplete or contain errors if the target 
         # ========================
 
         current_gen_directory = os.path.abspath(f"{RUN_DIRECTORY}/gen_{current_gen}")
-        target_agent_path = os.path.join(current_gen_directory, "target_agent.py")
+        if focus == "weights":
+            target_agent_path = os.path.join(current_gen_directory, "train.py")
+        else:
+            target_agent_path = os.path.join(current_gen_directory, "target_agent.py")
 
         logger.info(f"Running target agent: {target_agent_path}")
 
@@ -643,8 +821,12 @@ NOTE: The agent execution log may be incomplete or contain errors if the target 
         target_agent_error_msg = ""
 
         # Create log file paths
-        stdout_log_file = os.path.join(current_gen_directory, "target_agent_stdout.log")
-        stderr_log_file = os.path.join(current_gen_directory, "target_agent_stderr.log")
+        if focus == "weights":
+            stdout_log_file = os.path.join(current_gen_directory, "train_stdout.log")
+            stderr_log_file = os.path.join(current_gen_directory, "train_stderr.log")
+        else:
+            stdout_log_file = os.path.join(current_gen_directory, "target_agent_stdout.log")
+            stderr_log_file = os.path.join(current_gen_directory, "target_agent_stderr.log")
 
         logger.info(f"  → Stdout log: {stdout_log_file}")
         logger.info(f"  → Stderr log: {stderr_log_file}")
@@ -744,8 +926,9 @@ NOTE: The agent execution log may be incomplete or contain errors if the target 
             logger.info(f"Running feedback agent for generation {current_gen}")
 
             # Load artifacts produced by the target agent so the feedback prompt is fully populated.
-            AGENT_PY = Path(current_gen_directory, "target_agent.py").read_text(encoding="utf-8")
-            TASK = Path(DATASET_DIRECTORY, "task.md").read_text(encoding="utf-8")
+            agent_file_name = "train.py" if focus == "weights" else "target_agent.py"
+            AGENT_PY = Path(current_gen_directory, agent_file_name).read_text(encoding="utf-8")
+            TASK = Path(task_dir, "data/public/task.md").read_text(encoding="utf-8")
 
             # Load agent execution log (supports both single-file and multi-trajectory formats)
             logger.info("Loading agent execution log...")
@@ -902,6 +1085,11 @@ STDERR:
             )
 
             logger.info(f"Feedback agent completed. Created improved agent for generation {next_gen}")
+
+            # Check for early stopping condition
+            if focus == "weights" and os.path.exists(os.path.join(next_gen_directory, "COMPLETED")):
+                logger.info(f"Feedback agent signaled completion via COMPLETED file. Exiting evolution loop early.")
+                break
         else:
             logger.info(f"Generation {current_gen} is the final generation. Skipping feedback agent.")
 
