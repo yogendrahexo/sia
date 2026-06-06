@@ -25,7 +25,7 @@ def _reference_section(task_files: TaskFiles, reference_dir: str | None) -> str:
     if reference_dir is None:
         return (
             "Here is a sample target_agent.py showing the complete implementation pattern "
-            f"(READ THE ENTIRE FILE):\n{reference_target_agent_py}"
+            f"(READ THE ENTIRE FILE):\n{task_files.reference_target_agent_py}"
         )
     return (
         f"Your reference agent implementation has been placed in your working directory ({reference_dir}). "
@@ -652,15 +652,15 @@ def build_meta_prompt(
     base = f"""You are a meta-agent. Your task is to create a target agent which can execute a task. Go ahead and create a target_agent.py for the target agent, which in turn can solve the given task.
 
 Here is the FULL TASK SPECIFICATION that your target_agent.py will need to solve:
-{task_md}
+{task_files.task_md}
 
 Here are a couple of sample task descriptions which the target agent has to solve:
-{sample_task_descriptions}
+{task_files.sample_task_descriptions}
 
 {reference_section}
 
 Here is a sample agent execution trajectory:
-{sample_agent_execution}
+{task_files.sample_agent_execution}
 
 CRITICAL RULES - FOLLOW EXACTLY:
 
@@ -886,7 +886,7 @@ NOTE: If you see errors or incomplete execution logs, focus on making the RL pip
 
 **SAMPLE TASK DESCRIPTIONS**:
 ```
-{sample_task_descriptions}
+{task_files.sample_task_descriptions}
 ```
 
 **CURRENT TARGET AGENT** (Generation {current_gen}):
