@@ -19,7 +19,7 @@ compatibility, `sia <flags>` with no sub-command is treated as `sia run <flags>`
 | `--meta-agent-profile` | no | `default-meta` | Profile for the meta/feedback agent (name or path to a `.json`) |
 | `--target-agent-profile` | no | `default-target` | Profile for the target agent (name or path to a `.json`) |
 | `--focus` | no | `harness` | Improvement focus: `harness` (code/prompt changes) or `weights` (RL-based tuning) |
-| `--training_sandbox` | no | `modal` | Sandbox for weights mode code execution: `modal` (default) or `sandboxfusion` |
+| `--training_sandbox` | no | `modal` | Sandbox environment for code execution during training rollouts (weights mode): `modal` (default) or `sandboxfusion` |
 | `--sandbox` | no | `none` | Target-agent isolation: `none` or `docker` |
 | `--no-web` | no | off | Don't auto-start the live dashboard during the run |
 | `--web-host` | no | `127.0.0.1` | Bind host for the live dashboard |
@@ -225,7 +225,7 @@ sia run --task gpqa --max_gen 5 --run_id 1
 ```
 
 ### Weights Mode
-Uses Reinforcement Learning to tune model weights/parameters via the `tinker-cookbook` library. The meta-agent generates `train.py` (training script) instead of `target_agent.py`.
+Used tune model weights/parameters via the `tinker-cookbook` library. The meta-agent generates `train.py` (training script) instead of `target_agent.py`. During training, `train.py` performs rollouts (samples code solutions) in a sandbox, executes them to get outputs.
 
 **Requirements:**
 - `TINKER_API_KEY` environment variable (required)
@@ -241,7 +241,7 @@ sia run --task gpqa --max_gen 5 --run_id 1 --focus weights --training_sandbox mo
 
 ### Training Sandbox Options
 
-When using weights mode, choose where train.py code is executed:
+When using weights mode, choose the sandbox environment where rollout code execution happens (where sampled code solutions are executed during training):
 
 - **Modal** (default): Cloud-based execution, requires `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`
 - **SandboxFusion**: Local Docker-based execution service
