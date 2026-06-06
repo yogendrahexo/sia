@@ -823,17 +823,25 @@ def main():
         # TINKER_API_KEY is always required for weights mode
         if not os.getenv("TINKER_API_KEY"):
             logger.error("✗ TINKER_API_KEY environment variable is required for weights mode (RL-based tuning).")
-            raise RuntimeError("TINKER_API_KEY not set. Please set the TINKER_API_KEY environment variable to use weights mode.")
+            raise RuntimeError(
+                "TINKER_API_KEY not set. Please set the TINKER_API_KEY environment variable to use weights mode."
+            )
 
         # MODAL_API_KEY is required if using modal sandbox
         if args.training_sandbox == "modal" and not os.getenv("MODAL_TOKEN_ID"):
             logger.error("✗ MODAL_TOKEN_ID environment variable is required when training_sandbox='modal'.")
-            raise RuntimeError("MODAL_TOKEN_ID not set. Please set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET for Modal authentication.")
+            raise RuntimeError(
+                "MODAL_TOKEN_ID not set. Please set MODAL_TOKEN_ID and MODAL_TOKEN_SECRET for Modal authentication."
+            )
 
         # Warn about resource requirements for sandboxfusion
         if args.training_sandbox == "sandboxfusion":
-            logger.warning("⚠ Using SandboxFusion sandbox. Ensure at least 40GB+ free disk space is available for Docker.")
-            logger.warning("⚠ Make sure SandboxFusion is running on localhost:8080 or set SANDBOX_URL environment variable.")
+            logger.warning(
+                "⚠ Using SandboxFusion sandbox. Ensure at least 40GB+ free disk space is available for Docker."
+            )
+            logger.warning(
+                "⚠ Make sure SandboxFusion is running on localhost:8080 or set SANDBOX_URL environment variable."
+            )
 
     # ========================
     # SECTION 1: Load Files from Task Directory
