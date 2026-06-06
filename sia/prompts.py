@@ -429,7 +429,7 @@ If your agent executes code via a sandbox:
       ```
     - Ensure MODAL_TOKEN_ID and MODAL_TOKEN_SECRET are set in the environment (automatically available)"""
 
-    return """You are a meta-agent. Your task is to create a training script which can execute a task.
+    return f"""You are a meta-agent. Your task is to create a training script which can execute a task.
 In this 'weights' mode, your primary goal is to implement a Reinforcement Learning (RL) pipeline to tune the model's performance for the specific task using the `tinker-cookbook` library.
 
 ---
@@ -440,16 +440,16 @@ RL INTEGRATION GUIDE:
 Go ahead and create a train.py which will train and return back the training model checkpoint url. You should take the reference agent and tune the model using this agent and whatever data or problem statement we have.
 
 Here is the FULL TASK SPECIFICATION that your train.py will need to solve:
-{task_md}
+{task_files.task_md}
 
 Here are a couple of sample task descriptions which the reference agent has to solve:
-{sample_task_descriptions}
+{task_files.sample_task_descriptions}
 
 Here is a sample reference train.py implementation showing the training component patterns (READ THE ENTIRE FILE):
-{reference_target_agent_py}
+{task_files.reference_target_agent_py}
 
 Here is a sample agent execution trajectory:
-{sample_agent_execution}
+{json.dumps(task_files.sample_agent_execution, indent=2)}
 
 CRITICAL RULES - FOLLOW EXACTLY:
 
@@ -606,16 +606,7 @@ CRITICAL RULES - FOLLOW EXACTLY:
 
 Example invocation (paths will vary at runtime):
     python train.py --dataset_dir /path/to/dataset --working_dir /path/to/working
-""".format(
-        RL_GUIDE=RL_GUIDE,
-        task_md=task_files.task_md,
-        sample_task_descriptions=task_files.sample_task_descriptions,
-        reference_target_agent_py=task_files.reference_target_agent_py,
-        sample_agent_execution=json.dumps(task_files.sample_agent_execution, indent=2),
-        working_dir=working_dir,
-        task_model=task_model,
-        sandbox_instruction=sandbox_instruction
-    )
+"""
 
 
 def build_meta_prompt(

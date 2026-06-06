@@ -659,10 +659,7 @@ def run_generation(
     gen_dir = layout.gen_dir(current_gen)
 
     # Use train.py for weights mode (RL tuning), target_agent.py for harness mode
-    if focus == "weights":
-        target_agent_path = os.path.join(gen_dir, "train.py")
-    else:
-        target_agent_path = layout.target_agent(current_gen)
+    target_agent_path = os.path.join(gen_dir, "train.py") if focus == "weights" else layout.target_agent(current_gen)
 
     stdout_log_file = layout.stdout_log(current_gen, focus=focus)
 
@@ -871,7 +868,7 @@ def main():
     reference_dir = run_setup.meta_agent_working_directory if resolved_ref.ref_dir is not None else None
 
     # Log focus mode and training sandbox
-    logger.info(f"Configuration (continued):")
+    logger.info("Configuration (continued):")
     logger.info(f"  - Focus mode: {args.focus}")
     if args.focus == "weights":
         logger.info(f"  - Training sandbox (for train.py code execution): {args.training_sandbox}")
